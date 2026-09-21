@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_xdg_activation_v1.h>
@@ -241,6 +242,44 @@ void launcher_fini(void) {
 		launcher_ctx_destroy(ctx);
 }
 
+// Commands started by doors are children of the compositor and nothing waits for them, so they
+// stay zombies after exiting. Reaping through a timer (not a SIGCHLD handler) keeps the signal
+// mask and disposition inherited by spawned programs untouched.
+static pid_t *spawned;
+static size_t num_spawned;
+static struct wl_event_source *reap_timer;
+
+static int reap_children(void *data) {
+	(void)data;
+	size_t kept = 0;
+	for (size_t i = 0; i < num_spawned; i++) {
+		if (waitpid(spawned[i], NULL, WNOHANG) == 0)
+			spawned[kept++] = spawned[i];
+	}
+	num_spawned = kept;
+
+	if (num_spawned > 0)
+		wl_event_source_timer_update(reap_timer, 1000);
+	return 0;
+}
+
+void launcher_track_child(pid_t pid) {
+	if (pid <= 0)
+		return;
+
+	pid_t *grown = realloc(spawned, (num_spawned + 1) * sizeof(*spawned));
+	if (!grown)
+		return;
+	spawned = grown;
+	spawned[num_spawned++] = pid;
+
+	if (!reap_timer)
+		reap_timer = wl_event_loop_add_timer(wl_display_get_event_loop(server.wl_display), reap_children,
+			NULL);
+	if (reap_timer)
+		wl_event_source_timer_update(reap_timer, 1000);
+}
+
 void launcher_exec(const char *cmd) {
 	if (!cmd || cmd[0] == '\0')
 		return;
@@ -287,4 +326,6 @@ void launcher_exec(const char *cmd) {
 
 	if (ctx)
 		ctx->pid = child;
+
+	launcher_track_child(child);
 }

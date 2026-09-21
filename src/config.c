@@ -728,11 +728,13 @@ void run_config_idle(void *data) {
 	config_ran = true;
 
 	wlr_log(WLR_INFO, "Running config: %s", config_path);
-	if (fork() == 0) {
+	pid_t child = fork();
+	if (child == 0) {
 		setsid();
 		execl("/bin/sh", "/bin/sh", config_path, NULL);
 		_exit(1);
 	}
+	launcher_track_child(child);
 }
 
 void load_hotkeys_idle(void *data) {

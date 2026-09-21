@@ -23,6 +23,7 @@ launcher_ctx_t *launcher_ctx_create_internal(void);
 const char *launcher_ctx_get_token_name(launcher_ctx_t *ctx);
 
 void launcher_exec(const char *cmd);
+void launcher_track_child(pid_t pid);
 
 void launcher_init(void);
 void launcher_fini(void);
