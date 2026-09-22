@@ -981,10 +981,6 @@ void toplevel_destroy(struct wl_listener *listener, void *data) {
 		toplevel->node = NULL;
 	}
 
-	if (toplevel->capture_renderer) {
-		capture_renderer_destroy(toplevel->capture_renderer);
-		toplevel->capture_renderer = NULL;
-	}
 
 	if (toplevel->image_capture != NULL) {
 		wlr_scene_node_destroy(&toplevel->image_capture->tree.node);
