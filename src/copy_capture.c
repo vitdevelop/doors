@@ -412,6 +412,9 @@ static struct wlr_ext_image_capture_source_v1_cursor *output_source_get_pointer_
 		struct wlr_ext_image_capture_source_v1 *base, struct wlr_seat *seat) {
 	(void)seat;
 	output_source_t *src = wl_container_of(base, src, base);
+
+	// a new cursor session reads the state right away, so bring it up to date
+	cursor_source_update(&src->cursor);
 	return &src->cursor.base;
 }
 
@@ -478,7 +481,6 @@ static void output_source_addon_destroy(struct wlr_addon *addon) {
 		wlr_buffer_unlock(src->cursor.buffer);
 	wlr_swapchain_destroy(src->cursor.swapchain);
 	wlr_swapchain_destroy(src->swapchain);
-	free(src->base.shm_formats);
 	free(src);
 }
 
